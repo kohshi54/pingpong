@@ -48,6 +48,15 @@ pong_mode = b.get_table("pong_mode")
 key = c_uint32(0)
 pong_mode[key] = mode
 
+flexkey = c_uint32(1)
+if selected_index == 0 or selected_index == 1:
+    flexflg = int(input("Flex mode on? (yes=1, no=0): "))
+    pong_mode[flexkey] = c_uint32(flexflg)
+    print(f"flex mode on!")
+else:
+    pong_mode[flexkey] = c_uint32(0)
+    print(f"flex mode off")
+
 ipr.tc("add", "clsact", idx)
 ipr.tc("add-filter", "bpf", idx, ":1", fd=fn.fd, name=fn.name, parent=INGRESS, classid=1, direct_action=True)
 
@@ -64,9 +73,24 @@ while 1:
     try:
         #aa = b.trace_fields() # read from /sys/kernel/debug/tracing/trace_pipe
         #print(aa)
-        b.perf_buffer_poll(); # use perf output to get data from kernel space
-    except KeyboardInterrupt:
-        print("Detaching ebpf program...")
-        ipr.tc("del", "clsact", idx)
-        exit()
 
+        v = b.get_table("pong_mode")[c_uint32(0)]
+        v = int.from_bytes(v, byteorder='little')
+        mode = list(Mode)[v]
+        print(f"{mode.name} mode now")
+
+        b.perf_buffer_poll(); # use perf output to get data from kernel space
+
+        for addr,cnt in b.get_table("ip_count").items():
+            addr = int.from_bytes(addr, byteorder='little')
+            cnt = int.from_bytes(cnt, byteorder='little')
+            print(f"{(addr>>24) & 0xFF}.{(addr>>16 & 0xFF)}.{(addr>>8 & 0xFF)}.{(addr & 0xFF)}, count = {cnt}")
+            if b.get_table("pong_mode")[c_uint32(1)]: # 1 = flex mode
+                if cnt == 10:
+                    print("too many request. Changing to SUPER BOT FIGHT mode!!!")
+
+    except KeyboardInterrupt:
+        break
+
+print("Detaching ebpf program...")
+ipr.tc("del", "clsact", idx)

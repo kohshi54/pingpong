@@ -27,6 +27,7 @@ typedef enum e_prog_mode {
 //BPF_HASH(pong_mode, t_prog_mode, bool);
 //BPF_HASH(pong_mode, u32, t_prog_mode);
 BPF_HASH(pong_mode, u32, u32);
+BPF_HASH(ip_count, u32, u32);
 
 
 /*
@@ -59,6 +60,23 @@ int tc_pingpong(struct __sk_buff *skb) {
 	__u32 dst_ip = ntohl(iph->daddr);
     t_data event = {src_ip, dst_ip};
     events.perf_submit(skb, &event, sizeof(event)); // user kuukannni watasutameni map (perf output) ni ierru
+
+    u32 zero = 0;
+    u32 *count = ip_count.lookup_or_try_init(&src_ip, &zero);
+    if (count) {
+        int flexkey = 1;
+        u32 *flexflg = pong_mode.lookup(&flexkey);
+        if (flexflg && *flexflg) {
+            if (*count >= 10) { // n kai koetara mode change (only flex mode)
+                int key = 0;
+                t_prog_mode mode = SUPER_BOT_FIGHT;
+                pong_mode.update(&key, &mode);
+            }
+        }
+        (*count)++;
+        ip_count.update(&src_ip, count);
+    }
+    bpf_trace_printk("%lu", count ? *count : 0);
 
 /*
 	bpf_trace_printk("[action] IP Packet, proto= %d", iph->protocol);
