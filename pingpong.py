@@ -1,8 +1,9 @@
-#!/usr/bin/python3
+#!/usr//python3
 
 from bcc import BPF
 from pyroute2 import IPRoute # to access netlink
 import sys
+import ctypes as ct
 from ctypes import c_uint32
 from enum import Enum
 
@@ -50,10 +51,20 @@ pong_mode[key] = mode
 ipr.tc("add", "clsact", idx)
 ipr.tc("add-filter", "bpf", idx, ":1", fd=fn.fd, name=fn.name, parent=INGRESS, classid=1, direct_action=True)
 
+class Data(ct.Structure):
+    _fields_ = [("saddr", ct.c_uint32),
+                ("daddr", ct.c_uint32)]
+
+def print_event(cpu, data, size):
+    event = ct.cast(data, ct.POINTER(Data)).contents
+    print(f"ping from {(event.saddr>>24) & 0xFF}.{(event.saddr>>16 & 0xFF)}.{(event.saddr>>8 & 0xFF)}.{(event.saddr & 0xFF)}")
+
+b["events"].open_perf_buffer(print_event)
 while 1:
     try:
-        aa = b.trace_fields() # read from /sys/kernel/debug/tracing/trace_pipe
-        print(aa)
+        #aa = b.trace_fields() # read from /sys/kernel/debug/tracing/trace_pipe
+        #print(aa)
+        b.perf_buffer_poll(); # use perf output to get data from kernel space
     except KeyboardInterrupt:
         print("Detaching ebpf program...")
         ipr.tc("del", "clsact", idx)

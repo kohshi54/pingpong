@@ -11,7 +11,11 @@
 
 //#include <linux/skbuff.h>
 
-//BPF_PERF_OUTPUT(events);
+typedef struct data_t {
+    __u32 saddr;
+    __u32 daddr;
+} t_data;
+BPF_PERF_OUTPUT(events); // saddr print suru tame
 
 typedef enum e_prog_mode {
     NORMAL,
@@ -51,24 +55,23 @@ int tc_pingpong(struct __sk_buff *skb) {
 	struct iphdr *iph = data + sizeof(struct ethhdr);
 	struct icmphdr *icmp = data + sizeof(struct ethhdr) + sizeof(struct iphdr);
 
-	//__u32 src_ip = iph->saddr;
-	//__u32 dst_ip = iph->daddr;
-	//bpf_trace_printk("[action] IP Packet, proto= %d, src= %lu, dst= %lu\n", iph->protocol, src_ip, dst_ip);
-
 	__u32 src_ip = ntohl(iph->saddr);
 	__u32 dst_ip = ntohl(iph->daddr);
+    t_data event = {src_ip, dst_ip};
+    events.perf_submit(skb, &event, sizeof(event)); // user kuukannni watasutameni map (perf output) ni ierru
+
+/*
 	bpf_trace_printk("[action] IP Packet, proto= %d", iph->protocol);
 	// separete because bpf_trace_printk limit its max args to 3.
 	bpf_trace_printk("src= %d.%d", (src_ip >> 24) & 0xFF, (src_ip >> 16) & 0xFF);
 	bpf_trace_printk(".%d.%d", (src_ip >> 8) & 0xFF, src_ip & 0xFF);
 	bpf_trace_printk("dst= %d.%d", (dst_ip >> 24) & 0xFF, (dst_ip >> 16) & 0xFF);
 	bpf_trace_printk(".%d.%d\n", (dst_ip >> 8) & 0xFF, dst_ip & 0xFF);
+*/
 
 	uint8_t old_ttl = iph->ttl;
 	iph->ttl = 125;
-
 	csum_replace2(&iph->check, htons(old_ttl << 8), htons(iph->ttl << 8));
-	//events.perf_submit(skb, &, sizeof(data));
 
     int key = 0;
     u32 *mode = pong_mode.lookup(&key);
