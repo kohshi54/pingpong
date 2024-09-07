@@ -70,17 +70,17 @@ int tc_pingpong(struct __sk_buff *skb) {
 	csum_replace2(&iph->check, htons(old_ttl << 8), htons(iph->ttl << 8));
 	//events.perf_submit(skb, &, sizeof(data));
 
-	swap_mac_addresses(skb);
-	swap_ip_addresses(skb);
-	//iph->daddr = (1 << 24) & 0xFF + (1 << 16) & 0xFF + (1 << 8) & 0xFF + (1 & 0xFF);
-
-	update_icmp_type(skb, 8, 0);
-	bpf_clone_redirect(skb, skb->ifindex, 0);
-    
-    //t_prog_mode mode = SUPER_BOT_FIGHT;
     int key = 0;
     u32 *mode = pong_mode.lookup(&key);
-    if (mode && *mode == NORMAL) { // incomplete
+
+    bool disguise_flg = (mode && *mode == DISGUISE);
+	swap_mac_addresses(skb);
+	swap_ip_addresses(skb, disguise_flg);
+	//iph->daddr = (1 << 24) & 0xFF + (1 << 16) & 0xFF + (1 << 8) & 0xFF + (1 & 0xFF);
+	update_icmp_type(skb, 8, 0);
+	//bpf_clone_redirect(skb, skb->ifindex, 0);
+    
+    if (mode && *mode == NORMAL) {
 	    bpf_clone_redirect(skb, skb->ifindex, 0);
     }
     if (mode && *mode == DISGUISE) {
