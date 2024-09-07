@@ -33,6 +33,10 @@ There are four types for pong mode:
   too much to paste here...!
   ```
 
+And one flag:
+- Flexflg\
+    if on, 10 requests from one ip address then automatically shift to super bot fight mode.
+
 Example usage:
 ```
 $ make
