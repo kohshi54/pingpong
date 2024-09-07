@@ -13,6 +13,17 @@
 
 //BPF_PERF_OUTPUT(events);
 
+typedef enum e_prog_mode {
+    NORMAL,
+    DISGUISE,
+    BAIGAESHI,
+    SUPER_BOT_FIGHT,
+} t_prog_mode;
+
+//BPF_HASH(pong_mode, t_prog_mode, bool);
+//BPF_HASH(pong_mode, u32, t_prog_mode);
+BPF_HASH(pong_mode, u32, u32);
+
 
 /*
 static inline void csum_replace2(uint16_t *sum, uint16_t old, uint16_t new)
@@ -64,9 +75,28 @@ int tc_pingpong(struct __sk_buff *skb) {
 	//iph->daddr = (1 << 24) & 0xFF + (1 << 16) & 0xFF + (1 << 8) & 0xFF + (1 & 0xFF);
 
 	update_icmp_type(skb, 8, 0);
-
 	bpf_clone_redirect(skb, skb->ifindex, 0);
-	
+    
+    //t_prog_mode mode = SUPER_BOT_FIGHT;
+    int key = 0;
+    u32 *mode = pong_mode.lookup(&key);
+    if (mode && *mode == NORMAL) { // incomplete
+	    bpf_clone_redirect(skb, skb->ifindex, 0);
+    }
+    if (mode && *mode == DISGUISE) {
+	    bpf_clone_redirect(skb, skb->ifindex, 0);
+    }
+    if (mode && *mode == BAIGAESHI) {
+	    bpf_clone_redirect(skb, skb->ifindex, 0);
+	    bpf_clone_redirect(skb, skb->ifindex, 0);
+    }
+    if (mode && *mode == SUPER_BOT_FIGHT) {
+        for (int i = 0; i < 100; i++) { // hyakubaigaeshi
+	        bpf_clone_redirect(skb, skb->ifindex, 0);
+        }
+    }
+
+   	
 	return TC_ACT_SHOT;
 }
 
